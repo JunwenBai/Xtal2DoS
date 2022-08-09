@@ -24,6 +24,9 @@ from xtal2dos.graph2seq import LuongAttnDecoderRNN
 import copy
 from xtal2dos.transformer import Decoder, Embeddings, MultiHeadedAttention, PositionwiseFeedForward, Generator, DecoderLayer, rate
 
+import e3nn
+from xtal2dos.e3nn_utils import Network
+
 #device = set_device()
 torch.cuda.empty_cache()
 kl_loss_fn = torch.nn.KLDivLoss()
@@ -249,6 +252,35 @@ class GNN(torch.nn.Module):
 
         return y, x, batch
 
+class E3NN(Network):
+    def __init__(self, neurons, **kwargs):
+        super().__init__(**kwargs)
+
+        n_h = neurons
+        self.embed_n        = Linear(92,n_h)
+        self.embed_e        = Linear(41,n_h)
+        self.embed_comp     = Linear(103,n_h)
+
+        self.neg_slope      = 0.2
+
+    def forward(self, data):
+        x, edge_index, edge_attr   = data.x, data.edge_index, data.edge_attr
+
+        batch, global_feat, cluster = data.batch, data.global_feature, data.cluster
+
+        #print(x.shape)
+        data.x = F.leaky_relu(self.embed_n(x)) # [num_atom, emb_len]
+        #print(x.shape)
+        data.edge_attr = F.leaky_relu(self.embed_e(edge_attr), self.neg_slope) # [num_edges, emb_len]
+        global_feat = F.leaky_relu(self.embed_comp(global_feat), self.neg_slope)
+
+        x = super().forward(data)
+        
+        # y = scatter(x, batch, dim=0).div(self.num_nodes**0.5)
+        y = global_mean_pool(x, batch)
+        z = torch.cat([y, global_feat], dim=-1)
+        return z, x, batch
+
 class GAT(nn.Module):
     def __init__(self,heads=4,neurons=64,nl=3,concat_comp=False,dropout=0.5):
         super(GAT, self).__init__()
@@ -322,7 +354,19 @@ class Xtal2DoS(nn.Module):
         number_layers = args.num_layers
         concat_comp = args.concat_comp
         #self.graph_encoder = GNN(n_heads, neurons=number_neurons, nl=number_layers, concat_comp=concat_comp)
-        self.graph_encoder = GAT(n_heads, neurons=number_neurons, nl=number_layers, concat_comp=concat_comp, dropout=args.graph_dropout)
+        if args.model == 'gat':
+            self.graph_encoder = GAT(n_heads, neurons=number_neurons, nl=number_layers, concat_comp=concat_comp, dropout=args.graph_dropout)
+        elif args.model == 'e3nn':
+            self.graph_encoder = E3NN(
+                                    neurons=number_neurons,
+                                    irreps_in=None, # TODO: atomic mass     
+                                    irreps_out=str(number_neurons)+"x0e",   
+                                    irreps_node_attr=str(number_neurons)+"x0e",    
+                                    layers=number_layers,
+                                    mul=32,
+                                    lmax=1, 
+                                    max_radius=4.,
+                                    num_neighbors=12)
 
         self.loss_type = args.xtal2dos_loss_type
         #self.input_dim = args.xtal2dos_input_dim # 128

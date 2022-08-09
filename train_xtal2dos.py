@@ -12,6 +12,7 @@ import pickle
 from copy import copy, deepcopy
 import json
 import time
+import wandb
 
 from torch.utils.tensorboard import SummaryWriter
 from parser import get_parser
@@ -22,10 +23,12 @@ import torch.multiprocessing as mp
 import torch.distributed as dist
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-
 best_valid_loss=1e+10
 
 def train_model(rank, args):
+    wandb.init(project="xtal2dos")
+    wandb.run.name = f'{args.model}_{args.data_src}_{args.exp_num}' 
+    wandb.run.save()
     if args.sche == "step":
         sche_name = f"_step-{args.step_interval}"
     elif args.sche == "cosine":
@@ -38,14 +41,14 @@ def train_model(rank, args):
     if args.swa:
         args.note = f"swa-{args.swa_start}-{args.swa_lr}_" + args.note
 
-    ckpt_dir = 'model_' + args.data_src + '_' + args.label_scaling + '_' \
+    ckpt_dir = f'model_{args.model}_{args.exp_num}_' + args.data_src + '_' + args.label_scaling + '_' \
                  + args.xtal2dos_loss_type +f'_dropout-{args.graph_dropout}-{args.dec_dropout}' \
                  + f'_bs-{args.batch_size*args.gpus}' + f'_lr-{args.lr}' + f'_{args.opt}' + f'_gpu-{args.gpus}' + sche_name \
                  + f'_ep-{args.num_epochs}' + f'_dec_{args.dec_layers}l' \
                  + f'_temp-{args.temp}' + f'_wd-{args.weight_decay}' + f'_rd-{args.rate_decay}' \
                  + f'_weighted-{args.sum_weighted}-{args.sum_scale}' + f'_accum-{args.accum_step}' + f'_h-{args.h}' + f'_d-{args.d_model}' \
                  + f'_clip-{args.clip}' + f'_c-epochs-{args.c_epochs}' \
-                 + f'_{args.note}'
+                 + f'_{args.note}' + f'_layer-{args.num_layers}' + f'_neurons-{args.num_neurons}'
 
     log_dir = './TRAINED/' + ckpt_dir
     if rank == 0:
@@ -108,20 +111,20 @@ def train_model(rank, args):
 
     # DATALOADER/ TARGET NORMALIZATION
     if args.data_src == 'binned_dos_128':
-        pd_data = pd.read_csv(f'../xtal2dos_DATA/label_edos/mpids.csv')
-        np_data = np.load(f'../xtal2dos_DATA/label_edos/total_dos_128.npy')
+        pd_data = pd.read_csv(f'./xtal2dos_DATA/label_edos/mpids.csv')
+        np_data = np.load(f'./xtal2dos_DATA/label_edos/total_dos_128.npy')
     elif args.data_src == 'ph_dos_51':
-        pd_data = pd.read_csv(f'../xtal2dos_DATA/phdos/mpids.csv')
-        np_data = np.load(f'../xtal2dos_DATA/phdos/ph_dos.npy')
+        pd_data = pd.read_csv(f'./xtal2dos_DATA/phdos/mpids.csv')
+        np_data = np.load(f'./xtal2dos_DATA/phdos/ph_dos.npy')
     else:
         raise ValueError('')
 
     NORMALIZER = DATA_normalizer(np_data)
 
-    CRYSTAL_DATA = CIF_Dataset(args, pd_data=pd_data, np_data=np_data, root_dir=f'../xtal2dos_DATA/', **RSM)
+    CRYSTAL_DATA = CIF_Dataset(args, pd_data=pd_data, np_data=np_data, root_dir=f'./xtal2dos_DATA/', **RSM)
 
     if args.data_src == 'ph_dos_51':
-        with open('../xtal2dos_DATA/phdos/200801_trteva_indices.pkl', 'rb') as f:
+        with open('./xtal2dos_DATA/phdos/200801_trteva_indices.pkl', 'rb') as f:
             train_idx, val_idx, test_idx = pickle.load(f)
     else:
         idx_list = list(range(len(pd_data)))
@@ -137,13 +140,13 @@ def train_model(rank, args):
     if args.finetune:
         assert args.finetune_dataset != 'null'
         if args.data_src == 'binned_dos_128':
-            with open(f'../xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/train_idx.json', ) as f:
+            with open(f'./xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/train_idx.json', ) as f:
                 train_idx = json.load(f)
 
-            with open(f'../xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/val_idx.json', ) as f:
+            with open(f'./xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/val_idx.json', ) as f:
                 val_idx = json.load(f)
 
-            with open(f'../xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/test_idx.json', ) as f:
+            with open(f'./xtal2dos_DATA/label_edos/materials_classes/' + args.finetune_dataset + '/test_idx.json', ) as f:
                 test_idx = json.load(f)
         else:
             raise ValueError('Finetuning is only supported on the binned dos 128 dataset.')
@@ -456,6 +459,8 @@ def train_model(rank, args):
             print_log("wd=%.6f\t wd_ori=%.6f" % (wd, wd_ori))
             print_log("\n*****************************************")
 
+            wandb.log({'avg_loss': avg_loss.item(), 'r2': r2.item(), 'r2_ori': r2_ori.item(), 'mae': mae.item(), 'mae_ori': mae_ori.item(), 'mse': mse.item(), 'mse_ori': mse_ori.item(), 'wd': wd.item(), 'wd_ori': wd_ori.item()})
+
         training_counter = 0
         total_loss = 0
         total_loss_base = 0
@@ -535,6 +540,8 @@ def train_model(rank, args):
                 print_log("wd=%.6f\t wd_ori=%.6f" % (wd, wd_ori))
                 print_log("\n*****************************************")
 
+                wandb.log({f'avg_loss_{mode}': avg_loss.item(), f'r2_{mode}': r2.item(), f'r2_ori_{mode}': r2_ori.item(), f'mae_{mode}': mae.item(), f'mae_ori_{mode}': mae_ori.item(), f'mse_{mode}': mse.item(), f'mse_ori_{mode}': mse_ori.item(), f'wd_{mode}': wd.item(), f'wd_ori_{mode}': wd_ori.item()})
+
             if mode == "Test" and best_valid_loss > mse_ori and rank == 0:
                 best_valid_loss = mse_ori
                 print_log("\n********** SAVING MODEL ***********")
@@ -597,7 +604,8 @@ def main():
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = str(get_unique_port())
 
-    mp.spawn(train_model, nprocs=args.gpus, args=(args,))
+    train_model(rank=0, args=args)
+    # mp.spawn(train_model, nprocs=args.gpus, args=(args,))
 
 if __name__ == '__main__':
     main()

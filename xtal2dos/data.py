@@ -267,7 +267,7 @@ class CIF_Lister(Dataset):
 class CIF_Dataset(Dataset):
     def __init__(self, args, pd_data=None, np_data=None, norm_obj=None, normalization=None, max_num_nbr=12, radius=8,
                  dmin=0, step=0.2, cls_num=3, root_dir='DATA/'):
-        self.root_dir = root_dir # ../xtal2dos_DATA/
+        self.root_dir = root_dir # ./xtal2dos_DATA/
         self.max_num_nbr, self.radius = max_num_nbr, radius # 12, 8
         self.pd_data = pd_data # (1524, 1)
         self.np_data = np_data # (1524, 51)
@@ -280,7 +280,7 @@ class CIF_Dataset(Dataset):
         self.args = args
         if self.args.data_src == 'ph_dos_51':
             #self.structures = torch.load('DATA/20210612_ph_dos_51/ph_structures.pt')
-            pkl_file = open('../xtal2dos_DATA/phdos/ph_structures.pkl', 'rb')
+            pkl_file = open('./xtal2dos_DATA/phdos/ph_structures.pkl', 'rb')
             self.structures = pickle.load(pkl_file) # 1524
             pkl_file.close()
             '''######### one sample #########
@@ -306,24 +306,24 @@ class CIF_Dataset(Dataset):
         catche_data_exist = False
 
         if self.args.data_src == 'binned_dos_128':
-            if path.exists(f'../xtal2dos_DATA/materials_with_edos_processed/' + cif_id + '.chkpt'):
+            if path.exists(f'./xtal2dos_DATA/materials_with_edos_processed/' + cif_id + '.chkpt'):
                 catche_data_exist = True
         elif self.args.data_src == 'ph_dos_51':
-            if path.exists(f'../xtal2dos_DATA/materials_with_phdos_processed/' + str(cif_id) + '.chkpt'):
+            if path.exists(f'./xtal2dos_DATA/materials_with_phdos_processed/' + str(cif_id) + '.chkpt'):
                 catche_data_exist = True
         elif self.args.data_src == 'no_label_128':
-            if path.exists(f'../xtal2dos_DATA/materials_without_dos_processed/' + cif_id + '.chkpt'):
+            if path.exists(f'./xtal2dos_DATA/materials_without_dos_processed/' + cif_id + '.chkpt'):
                 catche_data_exist = True
 
         #catche_data_exist = False ######
 
         if self.args.use_catached_data and catche_data_exist:
             if self.args.data_src == 'binned_dos_128':
-                tmp_dist = torch.load(f'../xtal2dos_DATA/materials_with_edos_processed/' + cif_id + '.chkpt')
+                tmp_dist = torch.load(f'./xtal2dos_DATA/materials_with_edos_processed/' + cif_id + '.chkpt')
             elif self.args.data_src == 'ph_dos_51':
-                tmp_dist = torch.load(f'../xtal2dos_DATA/materials_with_phdos_processed/' + str(cif_id) + '.chkpt')
+                tmp_dist = torch.load(f'./xtal2dos_DATA/materials_with_phdos_processed/' + str(cif_id) + '.chkpt')
             elif self.args.data_src == 'no_label_128':
-                tmp_dist = torch.load(f'../xtal2dos_DATA/materials_without_dos_processed/' + cif_id + '.chkpt')
+                tmp_dist = torch.load(f'./xtal2dos_DATA/materials_without_dos_processed/' + cif_id + '.chkpt')
 
             atom_fea = tmp_dist['atom_fea'] # [?, 92]
             nbr_fea = tmp_dist['nbr_fea'] # [?, 12, 41]
@@ -518,15 +518,15 @@ class CIF_Dataset(Dataset):
         tmp_dist['atom_id'] = [crystal[i].specie for i in range(len(crystal))]
 
         if self.args.data_src == 'binned_dos_128':
-            pa = '../xtal2dos_DATA/materials_with_edos_processed/'
+            pa = './xtal2dos_DATA/materials_with_edos_processed/'
             mkdirs(pa)
             torch.save(tmp_dist, pa + cif_id + '.chkpt')
         elif self.args.data_src == 'ph_dos_51':
-            pa = '../xtal2dos_DATA/materials_with_phdos_processed/'
+            pa = './xtal2dos_DATA/materials_with_phdos_processed/'
             mkdirs(pa)
             torch.save(tmp_dist, pa + str(cif_id) + '.chkpt')
         elif self.args.data_src == 'no_label_128':
-            pa = '../xtal2dos_DATA/materials_without_dos_processed/'
+            pa = './xtal2dos_DATA/materials_without_dos_processed/'
             mkdirs(pa)
             torch.save(tmp_dist, pa + cif_id + '.chkpt')
 

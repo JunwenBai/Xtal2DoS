@@ -8,6 +8,9 @@ def get_parser():
     parser.add_argument('--opt', default='adamw',choices=['adam','adamw'])
     parser.add_argument('--part', default='both',choices=['base','peak','both'])
 
+    parser.add_argument('--model', default='gat',choices=['gat','e3nn'])
+    parser.add_argument('--exp_num', default=0, type=int)
+
     parser.add_argument('--label_scaling', default='standardized',choices=['standardized','normalized_sum', 'normalized_max', 'logcosh', 'huber', 'KL', 'bregman'])
     # MOST CRUCIAL MODEL PARAMETERS
     parser.add_argument('--num_layers',default=3, type=int,

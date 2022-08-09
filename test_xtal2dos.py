@@ -1,7 +1,7 @@
-from Mat2Spec.data import *
-from Mat2Spec.Mat2Spec import *
-from Mat2Spec.file_setter import use_property
-from Mat2Spec.utils import *
+from xtal2dos.data import *
+from xtal2dos.xtal2dos import *
+from xtal2dos.file_setter import use_property
+from xtal2dos.utils import *
 import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
@@ -52,32 +52,32 @@ valid_param     = {'batch_size':batch_size, 'shuffle': False}
 
 # DATALOADER/ TARGET NORMALIZATION
 if args.data_src == 'binned_dos_128':
-    pd_data = pd.read_csv(f'../Mat2Spec_DATA/label_edos/'+args.test_mpid)
-    np_data = np.load(f'../Mat2Spec_DATA/label_edos/total_dos_128.npy')
+    pd_data = pd.read_csv(f'./xtal2dos_DATA/label_edos/'+args.test_mpid)
+    np_data = np.load(f'./xtal2dos_DATA/label_edos/total_dos_128.npy')
 elif args.data_src == 'ph_dos_51':
-    pd_data = pd.read_csv(f'../Mat2Spec_DATA/phdos/'+args.test_mpid)
-    np_data = np.load(f'../Mat2Spec_DATA/phdos/ph_dos.npy')
+    pd_data = pd.read_csv(f'./xtal2dos_DATA/phdos/'+args.test_mpid)
+    np_data = np.load(f'./xtal2dos_DATA/phdos/ph_dos.npy')
 elif args.data_src == 'no_label_128':
-    pd_data = pd.read_csv(f'../Mat2Spec_DATA/no_label/'+args.test_mpid)
+    pd_data = pd.read_csv(f'./xtal2dos_DATA/no_label/'+args.test_mpid)
     np_data = np.random.rand(len(pd_data), 128) # dummy label
 
 NORMALIZER = DATA_normalizer(np_data)
 
 if args.data_src == 'no_label_128':
-    mean_tmp = torch.tensor(np.load(f'../Mat2Spec_DATA/no_label/label_mean_binned_dos_128.npy'))
-    std_tmp = torch.tensor(np.load(f'../Mat2Spec_DATA/no_label/label_std_binned_dos_128.npy'))
+    mean_tmp = torch.tensor(np.load(f'./xtal2dos_DATA/no_label/label_mean_binned_dos_128.npy'))
+    std_tmp = torch.tensor(np.load(f'./xtal2dos_DATA/no_label/label_std_binned_dos_128.npy'))
     NORMALIZER.mean = mean_tmp
     NORMALIZER.std = std_tmp
 
-CRYSTAL_DATA = CIF_Dataset(args, pd_data=pd_data, np_data=np_data, root_dir=f'../Mat2Spec_DATA/', **RSM)
+CRYSTAL_DATA = CIF_Dataset(args, pd_data=pd_data, np_data=np_data, root_dir=f'./xtal2dos_DATA/', **RSM)
 
 ckpt_dir = 'model_' + args.data_src + '_' + args.label_scaling + '_' \
-             + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '_dropout' + str(args.dec_dropout)
+             + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '_dropout' + str(args.dec_dropout)
 print("model:", ckpt_dir)
 
 
 if args.data_src == 'ph_dos_51':
-    with open('../Mat2Spec_DATA/phdos/200801_trteva_indices.pkl', 'rb') as f:
+    with open('./xtal2dos_DATA/phdos/200801_trteva_indices.pkl', 'rb') as f:
         train_idx, val_idx, test_idx = pickle.load(f)
 elif args.data_src == 'no_label_128':
     test_idx = list(range(len(pd_data)))
@@ -95,7 +95,7 @@ elif args.data_src != 'ph_dos_51' and args.data_src != 'no_label_128':
 if args.finetune:
     assert args.finetune_dataset != 'null'
     if args.data_src == 'binned_dos_128':
-        with open(f'../Mat2Spec_DATA/20210619_binned_32_128/materials_classes/' + args.finetune_dataset + '/test_idx.json', ) as f:
+        with open(f'./xtal2dos_DATA/20210619_binned_32_128/materials_classes/' + args.finetune_dataset + '/test_idx.json', ) as f:
             test_idx = json.load(f)
     else:
         raise ValueError('Finetuning is only supported on the binned dos 128 dataset.')
@@ -104,21 +104,21 @@ print('testing size:', len(test_idx))
 
 testing_set     =  CIF_Lister(test_idx, CRYSTAL_DATA, df=pd_data)
 
-print(f'> USING MODEL Mat2Spec!')
-the_network = Mat2Spec(args)
+print(f'> USING MODEL xtal2dos!')
+the_network = Xtal2DoS(args)
 net = the_network.to(device)
 # load checkpoint
 if args.finetune:
-    check_point_path = './TRAINED/finetune/model_Mat2Spec_' + args.data_src + '_' + args.label_scaling \
-            + '_' + args.Mat2Spec_loss_type + '_finetune_' + args.finetune_dataset + '.chkpt'
+    check_point_path = './TRAINED/finetune/model_xtal2dos_' + args.data_src + '_' + args.label_scaling \
+            + '_' + args.xtal2dos_loss_type + '_finetune_' + args.finetune_dataset + '.chkpt'
 else:
     check_point_path = './TRAINED/' + ckpt_dir + '.chkpt'
 
 if args.ablation_LE:
-    check_point_path = './TRAINED/model_Mat2Spec_binned_dos_128_normalized_sum_KL_trainsize1.0_ablation_LE.chkpt'
+    check_point_path = './TRAINED/model_xtal2dos_binned_dos_128_normalized_sum_KL_trainsize1.0_ablation_LE.chkpt'
 
 if args.ablation_CL:
-    check_point_path = './TRAINED/model_Mat2Spec_binned_dos_128_normalized_sum_KL_trainsize1.0_ablation_CL.chkpt'
+    check_point_path = './TRAINED/model_xtal2dos_binned_dos_128_normalized_sum_KL_trainsize1.0_ablation_CL.chkpt'
 
 if args.check_point_path is not None:
     check_point = torch.load('./TRAINED/'+args.check_point_path+'/model.ckpt')
@@ -369,8 +369,8 @@ for i, (pred, label, cif) in enumerate(zip(prediction, label_gt, cif_ids)):
         plot(pred, label, i, cif, plot_path)
 
 
-#np.save('./RESULT/prediction_Mat2Spec_allsamples_' + args.data_src + '_' + args.label_scaling + '_' \
-#        + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
+#np.save('./RESULT/prediction_xtal2dos_allsamples_' + args.data_src + '_' + args.label_scaling + '_' \
+#        + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
 
 
 result_path = './RESULT/'
@@ -417,18 +417,18 @@ if args.label_scaling == 'standardized':
     ## save results ##
     if args.data_src != 'no_label_128' and args.data_src != 'no_label_32':
         np.save(result_path + 'label_gt_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
         np.save(result_path + 'label_mean_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', mean)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', mean)
         np.save(result_path + 'label_std_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', std)
-    np.save(result_path + 'prediction_Mat2Spec_' + args.data_src + '_' + args.label_scaling + '_' \
-            + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
-    #np.save(result_path + 'prediction_Mat2Spec_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
-    #                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', std)
+    np.save(result_path + 'prediction_xtal2dos_' + args.data_src + '_' + args.label_scaling + '_' \
+            + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
+    #np.save(result_path + 'prediction_xtal2dos_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
+    #                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
     testing_mpid = pd_data.iloc[test_idx]
     testing_mpid.to_csv(result_path + 'testing_mpids' + args.data_src + '_' + args.label_scaling + '_' \
-                        + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
+                        + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
 
 elif args.label_scaling == 'normalized_max':
     print('\n > label scaling: norm max')
@@ -446,20 +446,20 @@ elif args.label_scaling == 'normalized_max':
     ## save results ##
     if args.data_src != 'no_label_128' and args.data_src != 'no_label_32':
         np.save(result_path + 'label_gt_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
         np.save(result_path + 'label_max_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_max)
-    np.save(result_path + 'prediction_Mat2Spec_' + args.data_src + '_' + args.label_scaling + '_' \
-            + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
-    #np.save(result_path + 'prediction_Mat2Spec_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
-    #                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_max)
+    np.save(result_path + 'prediction_xtal2dos_' + args.data_src + '_' + args.label_scaling + '_' \
+            + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
+    #np.save(result_path + 'prediction_xtal2dos_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
+    #                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
     testing_mpid = pd_data.iloc[test_idx]
     testing_mpid.to_csv('testing_mpids' + args.data_src + '_' + args.label_scaling + '_' \
-                    + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
+                    + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
 
 elif args.label_scaling == 'normalized_sum':
     print('\n > label scaling: norm sum')
-    assert args.Mat2Spec_loss_type == 'KL' or args.Mat2Spec_loss_type == 'WD'
+    assert args.xtal2dos_loss_type == 'KL' or args.xtal2dos_loss_type == 'WD'
     label_sum = np.sum(label_gt, axis=1, keepdims=True)
     label_gt_standardized = label_gt / label_sum
     mae = np.mean(np.abs((prediction) - label_gt_standardized))
@@ -474,16 +474,16 @@ elif args.label_scaling == 'normalized_sum':
     ## save results ##
     if args.data_src != 'no_label_128' and args.data_src != 'no_label_32':
         np.save(result_path + 'label_gt_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_gt)
         np.save(result_path + 'label_sum_' + args.data_src + '_' + args.label_scaling + '_' \
-                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_sum)
-    np.save(result_path + 'prediction_Mat2Spec_' + args.data_src + '_' + args.label_scaling + '_' \
-            + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
-    #np.save(result_path + 'prediction_Mat2Spec_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
-    #                + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
+                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', label_sum)
+    np.save(result_path + 'prediction_xtal2dos_' + args.data_src + '_' + args.label_scaling + '_' \
+            + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x)
+    #np.save(result_path + 'prediction_xtal2dos_standard_deviation_' + args.data_src + '_' + args.label_scaling + '_' \
+    #                + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.npy', prediction_x_std)
     testing_mpid = pd_data.iloc[test_idx]
     testing_mpid.to_csv(result_path + 'testing_mpids_' + args.data_src + '_' + args.label_scaling + '_' \
-                        + args.Mat2Spec_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
+                        + args.xtal2dos_loss_type + '_trainsize' + str(args.trainset_subset_ratio) + '.csv', index=False, header=True)
 
 print("\n********** TESTING STATISTIC ***********")
 print("total_loss =%.6f\t nll_loss =%.6f\t nll_loss_x =%.6f\t kl_loss =%.6f\t" %
