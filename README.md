@@ -5,7 +5,7 @@
 The implementation of Xtal2DoS using PyTorch.
 
 # Sample Dataset
-Datasets are stored in `../xtal2dos_DATA/`.
+Datasets can be found [here](https://github.com/gomes-lab/Mat2Spec).
 
 # Environment
 Run `./install.sh`
