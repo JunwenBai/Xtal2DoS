@@ -28,7 +28,7 @@ To test the model:
 
 ## Paper
 
-If you find our work interesting, please consider citing the following paper:
+If you find our work inspiring, please consider citing the following paper:
 
 ```bibtex
 @inproceedings{bai2022xtaldos,
