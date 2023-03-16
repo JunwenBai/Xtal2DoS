@@ -26,3 +26,15 @@ To train the model:
 To test the model:
 ``bash scripts/run_test.sh``
 
+## Paper
+
+If you find our work interesting, please consider citing the following paper:
+
+```bibtex
+@inproceedings{bai2022xtaldos,
+  title={Xtal2DoS: Attention-based Crystal to Sequence Learning for Density of States Prediction},
+  author={Junwen Bai and Yuanqi Du and Yingheng Wang and Shufeng Kong and John Gregoire and Carla P Gomes},
+  booktitle={NeurIPS 2022 AI for Science: Progress and Promises},
+  year={2022}
+}
+```
