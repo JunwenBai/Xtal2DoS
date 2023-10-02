@@ -5,7 +5,7 @@
 The implementation of Xtal2DoS using PyTorch.
 
 # Sample Dataset
-Datasets are stored in `../xtal2dos_DATA/`.
+Datasets can be found [here](https://github.com/gomes-lab/Mat2Spec).
 
 # Environment
 Run `./install.sh`
@@ -26,3 +26,15 @@ To train the model:
 To test the model:
 ``bash scripts/run_test.sh``
 
+## Paper
+
+If you find our work inspiring, please consider citing the following paper:
+
+```bibtex
+@inproceedings{bai2022xtaldos,
+  title={Xtal2DoS: Attention-based Crystal to Sequence Learning for Density of States Prediction},
+  author={Junwen Bai and Yuanqi Du and Yingheng Wang and Shufeng Kong and John Gregoire and Carla P Gomes},
+  booktitle={NeurIPS 2022 AI for Science: Progress and Promises},
+  year={2022}
+}
+```
