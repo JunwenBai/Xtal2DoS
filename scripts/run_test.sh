@@ -1,4 +1,4 @@
-python test_xtal2dos.py \
+python3 test_xtal2dos.py \
     --concat_comp '' \
     --xtal2dos-loss-type 'KL' \
     --label_scaling 'normalized_sum' \
