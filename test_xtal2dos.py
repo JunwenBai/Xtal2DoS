@@ -105,7 +105,7 @@ print('testing size:', len(test_idx))
 testing_set     =  CIF_Lister(test_idx, CRYSTAL_DATA, df=pd_data)
 
 print(f'> USING MODEL xtal2dos!')
-the_network = xtal2dos(args)
+the_network = Xtal2DoS(args)
 net = the_network.to(device)
 # load checkpoint
 if args.finetune:
